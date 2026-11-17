@@ -1,5 +1,5 @@
 #!/bin/bash
-# Compile the four Swift files into one binary: bin/claude-bulb
+# Compile all Swift files into one binary: bin/claude-bulb
 set -euo pipefail
 cd "$(dirname "$0")"
 mkdir -p bin

@@ -30,5 +30,21 @@ check "clear-all empties the folder" "$(count)" "0"
 $BIN bogus </dev/null 2>/dev/null
 check "unknown action exits 2" "$?" "2"
 
+# --- usage: tokens and cost from transcript fixtures (expected numbers worked out by hand in docs/how-it-works.md)
+export CLAUDE_BULB_PROJECTS=./tests/fixtures/projects
+export CLAUDE_BULB_PRICES=./prices.json
+report="$($BIN usage --since 2026-01-01)"
+total="$(echo "$report" | grep 'Total:')"
+check "usage dedupes repeated lines of one reply (out 500+7+3+2000)" "$(echo "$total" | grep -o 'out [^ ]*')" "out 2.5k"
+check "usage counts subagent files in their session (read 100k+200k)" "$(echo "$total" | grep -o 'read [^ ]*')" "read 300.0k"
+check "usage prices Haiku 5.5 long prompts at the higher tier" "$(echo "$total" | grep -o '\$[0-9.]*')" "\$0.06"
+check "unknown model and fast mode count as unpriced, not guessed" "$(echo "$total" | grep -o '+[0-9]* unpriced')" "+2 unpriced"
+check "session is labelled by its project folder" "$(echo "$report" | grep -c '  demo:')" "1"
+check "replies before --since are left out" "$(echo "$total" | grep -o 'in [^ ]*')" "in 1.0k"
+CLAUDE_BULB_PRICES=/nonexistent $BIN usage --since 2026-01-01 | grep 'Total:' | grep -q '\$0.00 (+4 unpriced)'
+check "missing prices.json shows tokens with every reply unpriced" "$?" "0"
+$BIN usage --since not-a-date 2>/dev/null
+check "bad --since date exits 2" "$?" "2"
+
 echo "passed: $pass  failed: $fail"
 [ "$fail" -eq 0 ]

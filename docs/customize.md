@@ -43,3 +43,14 @@ Hook event names and Notification types are listed in the
 
 In `Sources/BulbApp.swift`, the timer interval (`withTimeInterval: 0.5`) controls both
 how fast it blinks and how quickly it notices a change.
+
+## Prices
+
+Edit [`prices.json`](../prices.json). Values are USD per million tokens, per model id:
+
+```json
+"claude-opus-5-5": { "standard": { "input": 4, "cache_write_5m": 5, "cache_write_1h": 8, "cache_read": 0.20, "output": 20 } }
+```
+
+A dated id such as `claude-haiku-4-5-20251001` matches the key `claude-haiku-4-5`.
+Changes show the next time you open the menu, with no rebuild needed.

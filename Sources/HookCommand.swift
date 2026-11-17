@@ -17,7 +17,7 @@ enum HookCommand {
         case "off": store.clear(id)
         case "clear-all": store.clearAll()
         default:
-            FileHandle.standardError.write("usage: claude-bulb [on|off|clear-all]\n".data(using: .utf8)!)
+            FileHandle.standardError.write("usage: claude-bulb [on|off|clear-all|usage [--since YYYY-MM-DD]]\n".data(using: .utf8)!)
             return 2
         }
         return 0

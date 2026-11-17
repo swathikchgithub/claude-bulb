@@ -54,6 +54,7 @@ Click the bulb for its menu:
 
 | Menu item | What it does |
 |---|---|
+| Today · API-equivalent cost | Grey lines: tokens and cost for all sessions today, then the 5 costliest sessions |
 | Mute sound | Keep blinking, stop the sound (until the app restarts) |
 | Clear now | Turn the bulb off for all sessions |
 | Quit Claude Bulb | Stop the app until next login |
@@ -69,6 +70,30 @@ Click the bulb for its menu:
 
 Each Claude session is tracked separately, so with two sessions open,
 answering one does not hide the other.
+
+## Token use and cost
+
+Open the bulb's menu to see today's tokens and cost, or run:
+
+```bash
+~/tools/claude-bulb/bin/claude-bulb usage
+```
+
+```text
+Today, API-equivalent cost (not what a subscription bills):
+  orca-platform: in 58 · write 159.1k · read 4.8M · out 29.7k · $2.84
+  Total: in 134 · write 390.1k · read 8.9M · out 51.4k · $5.93
+```
+
+- **in**: input tokens not served from cache. **write**: tokens written to the prompt cache.
+  **read**: tokens served from the cache (cheap). **out**: output tokens.
+- The numbers come from Claude Code's own transcripts in `~/.claude/projects`. Nothing is sent anywhere.
+- **The cost is API-equivalent.** On a Pro or Max subscription you do not pay this; it is what the
+  same use would cost on the Claude API. Prices live in [`prices.json`](prices.json), copied from
+  [Anthropic's pricing page](https://platform.claude.com/docs/en/about-claude/pricing). Update it when prices change.
+- A reply whose model is not in `prices.json`, or that used fast mode, is counted in tokens and
+  shown as "unpriced". The cost is never guessed.
+- `claude-bulb usage --since 2026-11-01` covers more than one day.
 
 ## Try it by hand
 

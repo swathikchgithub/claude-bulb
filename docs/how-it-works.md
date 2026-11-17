@@ -27,12 +27,17 @@ bulb off even though session B is still waiting.
 
 | File | Job |
 |---|---|
-| `Sources/main.swift` | Entry point. With an argument (`on`, `off`, `clear-all`) it acts as a hook; with none it starts the menu bar app. |
+| `Sources/main.swift` | Entry point. With `on`, `off` or `clear-all` it acts as a hook; `usage` prints the report; with none it starts the menu bar app. |
 | `Sources/BulbStore.swift` | Owns the state folder: create, delete and list session files. Rejects unsafe session ids (path traversal). |
 | `Sources/HookCommand.swift` | Parses the hook JSON and calls BulbStore. Always exits 0 on bad input so it can never break Claude Code. |
-| `Sources/BulbApp.swift` | `NSStatusItem` in the menu bar: SF Symbol `lightbulb`, red blink, `Glass` sound every 30 s, menu. |
+| `Sources/BulbApp.swift` | `NSStatusItem` in the menu bar: SF Symbol `lightbulb`, red blink, `Glass` sound every 30 s, menu with today's usage. |
+| `Sources/TokenUsage.swift` | The four token meters (input, cache write 5m/1h, cache read, output) and how to add them. |
+| `Sources/UsageReader.swift` | Reads transcripts in `~/.claude/projects` (subagent files count toward their session). Files in, replies out. |
+| `Sources/Pricing.swift` | Loads `prices.json` and turns tokens into dollars, with Haiku 5.5's long-prompt tier. Unknown model gives no price. |
+| `Sources/UsageReport.swift` | Dedupes replies by message id, sums per session and in total, formats the lines. |
+| `prices.json` | USD per million tokens per model, copied from Anthropic's pricing page. |
 | `build.sh` | `swiftc -O Sources/*.swift -o bin/claude-bulb` |
-| `test.sh` | Tests the hook side against a temporary state folder (`CLAUDE_BULB_DIR`). |
+| `test.sh` | Tests the hook side against a temporary state folder (`CLAUDE_BULB_DIR`), and the usage report against `tests/fixtures`. |
 | `hooks.py` | Adds or removes the claude-bulb hooks in `~/.claude/settings.json`, with a backup. Identifies its own hooks by `claude-bulb` in the command. |
 | `install.sh` / `uninstall.sh` | Build, test, LaunchAgent, hooks / the reverse. |
 
@@ -40,8 +45,36 @@ bulb off even though session B is still waiting.
 
 - Hook call: one short process, a few milliseconds, creates or deletes one empty file.
 - App: one directory listing every 0.5 s. Time O(n) where n = waiting sessions (usually 0 to 3).
+- Usage: only when the menu opens, on a background thread. Time O(L) over the lines of transcripts
+  touched today. About 0.7 s for 9 million tokens of transcripts. The blink timer never waits for it.
 
-## Environment variable
+## How usage is counted
 
-`CLAUDE_BULB_DIR` overrides the state folder (default `~/.claude-bulb/state`).
-`test.sh` uses it so tests never touch your real state.
+1. Find every `*.jsonl` under `~/.claude/projects` changed since midnight. `<session>/subagents/*.jsonl`
+   belongs to `<session>`.
+2. Keep lines with `message.usage`, a real model (not `<synthetic>`) and a `timestamp` since midnight.
+3. **Dedupe by `message.id`.** Claude Code writes one reply on several lines with the same usage;
+   adding every line would count it two or three times.
+4. Price each reply on its own: tokens × the model's rate in `prices.json` ÷ 1,000,000.
+   Haiku 5.5 uses its higher rates when that reply's prompt (input + cache writes + cache reads) is over 100,000 tokens.
+
+Worked example from `tests/fixtures` (what `test.sh` checks):
+
+| Reply | Model | Tokens | Cost |
+|---|---|---|---|
+| `msg_a` (on 2 lines) | Opus 5.5 | in 1,000 · write 2,000 · read 100,000 · out 500 | (1000×4 + 2000×5 + 100000×0.20 + 500×20) / 1M = $0.044 |
+| `msg_d` (subagent) | Haiku 5.5, prompt 200,000 > 100,000 | read 200,000 · out 2,000 | (200000×0.05 + 2000×2.50) / 1M = $0.015 |
+| `msg_b` | unknown model | out 7 | unpriced |
+| `msg_e` | Opus 5.5, fast mode | out 3 | unpriced |
+
+Total: out 2,510 ("2.5k"), $0.059 ("$0.06"), 2 unpriced. Without dedupe, out would be 3,010.
+
+## Environment variables
+
+| Variable | Default | Used for |
+|---|---|---|
+| `CLAUDE_BULB_DIR` | `~/.claude-bulb/state` | Waiting-session files |
+| `CLAUDE_BULB_PROJECTS` | `$CLAUDE_CONFIG_DIR/projects`, else `~/.claude/projects` | Transcripts to read |
+| `CLAUDE_BULB_PRICES` | `prices.json` next to `bin/` | Price table |
+
+`test.sh` sets all three so tests never touch your real files.
