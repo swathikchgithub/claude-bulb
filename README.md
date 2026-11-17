@@ -5,6 +5,10 @@ When Claude is **waiting for you** (a permission prompt, a question, or a finish
 the bulb next to your clock **blinks red** and plays a sound every 30 seconds.
 When you answer, it goes calm.
 
+![claude-bulb going from calm to blinking red and back](docs/demo.gif)
+
+<sub>The bulb's states, drawn with the same SF Symbols and colours the app uses (an illustration, not a screen recording).</sub>
+
 No dependencies beyond Apple's own tools. About 150 lines of Swift, Bash and Python.
 
 ```
