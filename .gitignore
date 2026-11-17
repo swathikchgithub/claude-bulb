@@ -1,0 +1,5 @@
+# Built binary (install.sh rebuilds it on each Mac)
+bin/
+.DS_Store
+.env*
+*.local.*
