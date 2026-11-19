@@ -1,7 +1,7 @@
 import AppKit
 
 /// The menu bar bulb. Reads BulbStore, draws the icon, blinks, plays the sound,
-/// and shows today's token use when the menu opens.
+/// and shows today's token use and Claude's footprint on this Mac when the menu opens.
 final class BulbApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let store: BulbStore
     private let soundEvery: TimeInterval = 30
@@ -14,6 +14,7 @@ final class BulbApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let menu = NSMenu()
     private var usageItems: [NSMenuItem] = []
     private var loadingUsage = false
+    private let footprint = FootprintMenu()
 
     init(store: BulbStore) { self.store = store }
 
@@ -21,6 +22,7 @@ final class BulbApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         buildMenu()
         item.menu = menu
+        footprint.refresh()   // start the slow disk scan now, so the first open is ready
         draw()
         // Poll every 0.5 s: check the state folder and flip the blink.
         Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in self?.tick() }
@@ -31,6 +33,8 @@ final class BulbApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         usageItems = [NSMenuItem(title: "Today · loading usage…", action: nil, keyEquivalent: "")]
         menu.addItem(usageItems[0])
         menu.addItem(.separator())
+        menu.addItem(footprint.item)
+        menu.addItem(.separator())
         muteItem.target = self
         menu.addItem(muteItem)
         let clear = NSMenuItem(title: "Clear now", action: #selector(clearNow), keyEquivalent: "")
@@ -40,7 +44,10 @@ final class BulbApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(NSMenuItem(title: "Quit Claude Bulb", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
-    func menuWillOpen(_ menu: NSMenu) { refreshUsage() }
+    func menuWillOpen(_ menu: NSMenu) {
+        refreshUsage()
+        footprint.refresh()
+    }
 
     /// Reading transcripts takes about half a second, so it runs off the main thread.
     /// The menu shows the previous numbers until the new ones arrive.

@@ -46,5 +46,27 @@ check "missing prices.json shows tokens with every reply unpriced" "$?" "0"
 $BIN usage --since not-a-date 2>/dev/null
 check "bad --since date exits 2" "$?" "2"
 
+# --- footprint: fake home folder, fake ps and launchctl output
+fake="$(mktemp -d)"
+mkdir -p "$fake/Library/Application Support/Claude/vm_bundles" "$fake/Library/Application Support/Claude/Cache" \
+         "$fake/.claude" "$fake/Library/Caches/com.anthropic.mystery" "$fake/Library/LaunchAgents"
+head -c 3000000 /dev/zero > "$fake/Library/Application Support/Claude/vm_bundles/vm.img"
+head -c 1500000 /dev/zero > "$fake/Library/Application Support/Claude/Cache/c"
+head -c 2000 /dev/zero > "$fake/.claude/settings.json"
+head -c 2000 /dev/zero > "$fake/Library/Caches/com.anthropic.mystery/x"
+touch "$fake/Library/LaunchAgents/com.anthropic.helper.plist"
+fp="$(CLAUDE_BULB_HOME="$fake" CLAUDE_BULB_PS=./tests/fixtures/ps.txt CLAUDE_BULB_LAUNCHCTL=./tests/fixtures/launchctl.txt $BIN footprint)"
+check "disk lists the biggest location first" "$(echo "$fp" | grep -A1 '^Disk:' | tail -1 | grep -o 'Claude app data')" "Claude app data"
+check "disk shows the biggest sub-folder under it" "$(echo "$fp" | grep -A2 '^Disk:' | tail -1 | grep -o 'vm_bundles')" "vm_bundles"
+check "disk finds unknown claude/anthropic folders" "$(echo "$fp" | grep -c 'Other: com.anthropic.mystery')" "1"
+check "disk counts only locations that exist" "$(echo "$fp" | grep -o 'in [0-9]* locations')" "in 3 locations"
+check "memory counts Claude processes and their children, not unrelated node" "$(echo "$fp" | grep -o 'in [0-9]* processes')" "in 7 processes"
+check "MCP servers and shells started by Claude are grouped" "$(echo "$fp" | grep -o 'Started by Claude (MCP servers, shells) ([0-9]*)')" "Started by Claude (MCP servers, shells) (2)"
+check "Claude Code inside the app folder is still Claude Code" "$(echo "$fp" | grep -o 'Claude Code (1)')" "Claude Code (1)"
+check "services: only Claude/Anthropic launchd jobs" "$(echo "$fp" | grep -o 'Background services: [0-9]*')" "Background services: 4"
+check "service that is loaded but idle shows not running" "$(echo "$fp" | grep -c 'Claude auto-updater (com.anthropic.claudefordesktop.ShipIt): not running')" "1"
+check "plist on disk but not loaded is reported" "$(echo "$fp" | grep -c 'com.anthropic.helper: installed, not loaded')" "1"
+rm -rf "$fake"
+
 echo "passed: $pass  failed: $fail"
 [ "$fail" -eq 0 ]

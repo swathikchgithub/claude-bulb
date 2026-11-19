@@ -1,0 +1,5 @@
+PID	Status	Label
+28561	0	application.com.anthropic.claudefordesktop.1.2
+-	0	com.anthropic.claudefordesktop.ShipIt
+1601	0	local.claude-bulb
+123	0	com.apple.something

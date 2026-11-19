@@ -1,11 +1,18 @@
 import AppKit
 
-// One binary, three modes:
+// One binary, several modes:
 //   claude-bulb            -> run the menu bar app
 //   claude-bulb on|off     -> called by Claude Code hooks (reads hook JSON on stdin)
 //   claude-bulb usage      -> print today's tokens and API-equivalent cost
+//   claude-bulb footprint  -> print Claude's disk, memory and background services
 let store = BulbStore.defaultStore()
 let args = CommandLine.arguments
+
+// claude-bulb footprint  -> print Claude's disk use, memory and background services
+if args.count > 1 && args[1] == "footprint" {
+    print(FootprintReport.scanNow().text)
+    exit(0)
+}
 
 // claude-bulb usage [--since YYYY-MM-DD]  -> print token use and API-equivalent cost
 if args.count > 1 && args[1] == "usage" {

@@ -1,0 +1,10 @@
+    1     0   1000 /sbin/launchd
+  100     1 400000 /Applications/Claude.app/Contents/MacOS/Claude
+  101   100 800000 /Applications/Claude.app/Contents/Frameworks/Claude Helper (Renderer).app/Contents/MacOS/Claude Helper (Renderer)
+  102   100   4000 /Applications/Claude.app/Contents/Helpers/chrome-native-host
+  200   101 400000 /Users/demo/Library/Application Support/Claude/claude-code/2.1.326/abc/claude.app/Contents/MacOS/claude
+  201   200  60000 node
+  202   201   2000 /bin/zsh
+  300     1  48000 /Users/demo/tools/claude-bulb/bin/claude-bulb
+  400     1  99999 /usr/bin/unrelated
+  401   400   5000 node

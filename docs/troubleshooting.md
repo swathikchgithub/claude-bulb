@@ -46,3 +46,14 @@ Every change writes a backup next to it:
 ls ~/.claude/settings.json.bak-claude-bulb-*
 ```
 Copy the one you want back over `~/.claude/settings.json`.
+
+## The bulb disappeared after a rebuild
+
+`launchctl print gui/$(id -u)/local.claude-bulb` shows `last exit reason = OS_REASON_CODESIGNING`.
+macOS kills a signed binary that was overwritten in place. `build.sh` avoids this by building
+`bin/claude-bulb.new`, signing it and moving it over the old file. If you build by hand, do the same,
+then restart:
+
+```bash
+launchctl kickstart -k gui/$(id -u)/local.claude-bulb
+```

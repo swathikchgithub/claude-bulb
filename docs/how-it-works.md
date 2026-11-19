@@ -36,6 +36,12 @@ bulb off even though session B is still waiting.
 | `Sources/Pricing.swift` | Loads `prices.json` and turns tokens into dollars, with Haiku 5.5's long-prompt tier. Unknown model gives no price. |
 | `Sources/UsageReport.swift` | Dedupes replies by message id, sums per session and in total, formats the lines. |
 | `prices.json` | USD per million tokens per model, copied from Anthropic's pricing page. |
+| `Sources/DiskScanner.swift` | Known Claude locations plus discovery by name; sizes as allocated on disk. Never follows symlinks. |
+| `Sources/ProcessScanner.swift` | Parses `ps`; a process counts if it runs from a Claude install, and so does everything it started. |
+| `Sources/ServiceScanner.swift` | Parses `launchctl list` and the LaunchAgents/LaunchDaemons folders. |
+| `Sources/FootprintReport.swift` | Totals and lines for the menu and `claude-bulb footprint`. |
+| `Sources/FootprintMenu.swift` | The submenu: memory and services on every open, disk at most every 10 minutes. |
+| `Sources/Shell.swift` | Runs `/bin/ps` and `/bin/launchctl` directly, never through a shell. |
 | `build.sh` | `swiftc -O Sources/*.swift -o bin/claude-bulb` |
 | `test.sh` | Tests the hook side against a temporary state folder (`CLAUDE_BULB_DIR`), and the usage report against `tests/fixtures`. |
 | `hooks.py` | Adds or removes the claude-bulb hooks in `~/.claude/settings.json`, with a backup. Identifies its own hooks by `claude-bulb` in the command. |
@@ -47,6 +53,9 @@ bulb off even though session B is still waiting.
 - App: one directory listing every 0.5 s. Time O(n) where n = waiting sessions (usually 0 to 3).
 - Usage: only when the menu opens, on a background thread. Time O(L) over the lines of transcripts
   touched today. About 0.7 s for 9 million tokens of transcripts. The blink timer never waits for it.
+- Footprint: `ps` and `launchctl` on every menu open (milliseconds). The disk walk takes about 3 s for
+  18 GB, on a background thread, at most every 10 minutes. Process grouping is one pass over a
+  parent-to-children map: time O(P), space O(P) for P processes.
 
 ## How usage is counted
 
@@ -76,5 +85,7 @@ Total: out 2,510 ("2.5k"), $0.059 ("$0.06"), 2 unpriced. Without dedupe, out wou
 | `CLAUDE_BULB_DIR` | `~/.claude-bulb/state` | Waiting-session files |
 | `CLAUDE_BULB_PROJECTS` | `$CLAUDE_CONFIG_DIR/projects`, else `~/.claude/projects` | Transcripts to read |
 | `CLAUDE_BULB_PRICES` | `prices.json` next to `bin/` | Price table |
+| `CLAUDE_BULB_HOME` | your home folder and `/` | Where the footprint looks (tests use a fake folder) |
+| `CLAUDE_BULB_PS` / `CLAUDE_BULB_LAUNCHCTL` | run the real command | A file whose text stands in for `ps` / `launchctl` output |
 
-`test.sh` sets all three so tests never touch your real files.
+`test.sh` sets these so tests never touch your real files.

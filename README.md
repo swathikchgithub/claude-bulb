@@ -55,6 +55,7 @@ Click the bulb for its menu:
 | Menu item | What it does |
 |---|---|
 | Today · API-equivalent cost | Grey lines: tokens and cost for all sessions today, then the 5 costliest sessions |
+| Claude on this Mac ▸ | Disk, memory and background services used by Claude and Claude Code. Click a location to show it in Finder |
 | Mute sound | Keep blinking, stop the sound (until the app restarts) |
 | Clear now | Turn the bulb off for all sessions |
 | Quit Claude Bulb | Stop the app until next login |
@@ -94,6 +95,42 @@ Today, API-equivalent cost (not what a subscription bills):
 - A reply whose model is not in `prices.json`, or that used fast mode, is counted in tokens and
   shown as "unpriced". The cost is never guessed.
 - `claude-bulb usage --since 2026-11-01` covers more than one day.
+
+## Claude on this Mac
+
+The **Claude on this Mac** submenu, or this command:
+
+```bash
+~/tools/claude-bulb/bin/claude-bulb footprint
+```
+
+```text
+Disk: 18.41 GB in 17 locations
+  15.97 GB  Claude app data  ~/Library/Application Support/Claude
+      12.44 GB  vm_bundles
+  1.11 GB  Claude Code install  ~/.local/share/claude
+  ...
+Memory: 2.16 GB in 23 processes
+  1.48 GB  Claude app (11)
+  397.5 MB  Claude Code (1)
+  232 MB  Started by Claude (MCP servers, shells) (8)
+  ...
+Background services: 3
+  Claude auto-updater (com.anthropic.claudefordesktop.ShipIt): not running
+  ...
+```
+
+- **Disk**: a fixed list of known Claude and Anthropic locations, plus anything named "claude" or
+  "anthropic" in the usual app folders. Sizes are space on disk in decimal units, like Finder
+  (`du -h` uses 1024, so it shows smaller numbers). It refreshes at most every 10 minutes.
+- **Memory**: processes that run from a Claude install, **plus everything they started**. That is how
+  MCP servers that only show up as `node` are counted. Shared memory is counted once per process,
+  as in Activity Monitor, so the total is slightly high.
+- **Background services**: your user's launchd jobs with "claude" or "anthropic" in the label,
+  plus plists installed but not loaded.
+- **Read-only.** It never deletes or stops anything. Most of the disk use (`vm_bundles`) is the
+  Claude app's agent VM image; the app needs it.
+- It only sees this Mac, not anything stored in the cloud.
 
 ## Try it by hand
 
