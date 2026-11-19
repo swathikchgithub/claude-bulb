@@ -52,6 +52,11 @@ Nothing to do. Work with Claude as usual. The bulb lights up when Claude needs y
 
 Click the bulb for its menu:
 
+![The bulb's menu: today's token cost per session, and the "Claude on this Mac" submenu with disk, memory and background services](docs/menu.png)
+
+<sub>A real screenshot of the menu. One cache folder name that contained a username is blanked out.</sub>
+
+
 | Menu item | What it does |
 |---|---|
 | Waiting on you | One line per session the bulb is lit for: project, reason, how long. Click a line to clear just that session |
