@@ -30,6 +30,29 @@ check "clear-all empties the folder" "$(count)" "0"
 $BIN bogus </dev/null 2>/dev/null
 check "unknown action exits 2" "$?" "2"
 
+# --- list: which session is waiting, and why
+export CLAUDE_BULB_DIR="$(mktemp -d)/state"
+tr="$(mktemp)"
+echo "{\"session_id\":\"p1\",\"hook_event_name\":\"PermissionRequest\",\"tool_name\":\"Bash\",\"cwd\":\"/x/orca-platform\",\"transcript_path\":\"$tr\"}" | $BIN on
+check "permission request names the project and tool" "$($BIN list | grep -c 'orca-platform — needs permission: Bash')" "1"
+echo "{\"session_id\":\"p1\",\"hook_event_name\":\"Notification\",\"notification_type\":\"permission_prompt\",\"message\":\"Claude needs your permission to use Bash\",\"cwd\":\"/x/orca-platform\",\"transcript_path\":\"$tr\"}" | $BIN on
+check "a later notification keeps the specific reason" "$($BIN list | grep -c 'needs permission: Bash')" "1"
+check "a later notification adds its message" "$($BIN list | grep -c 'Claude needs your permission to use Bash')" "1"
+echo "{\"session_id\":\"q1\",\"hook_event_name\":\"PermissionRequest\",\"tool_name\":\"AskUserQuestion\",\"cwd\":\"/x/evalify\",\"transcript_path\":\"$tr\"}" | $BIN on
+check "AskUserQuestion reads as a question" "$($BIN list | grep -c 'evalify — asked you a question')" "1"
+printf '{"session_id":"s9","hook_event_name":"Stop","cwd":"/x/maven","transcript_path":"%s","last_assistant_message":"Tests pass now.\\nMore detail here."}' "$tr" | $BIN on
+check "finished turn shows the first line of Claude's last reply" "$($BIN list | grep -c '"Tests pass now."')" "1"
+touch "$CLAUDE_BULB_DIR/oldstyle"
+check "empty files from older versions still show" "$($BIN list | grep -c 'unknown session oldstyle')" "1"
+check "list counts every waiting session" "$($BIN list | head -1)" "Waiting on you (4):"
+touch -t 202001010000 "$CLAUDE_BULB_DIR/oldstyle"
+check "entries untouched for 12 hours are removed" "$($BIN list | grep -c 'Removed 1 stale: oldstyle')" "1"
+rm -f "$tr"
+check "entries whose transcript is gone are removed" "$($BIN list | head -1)" "Nothing is waiting on you."
+echo '{"session_id":"p1"}' | $BIN on; echo '{"session_id":"p2"}' | $BIN on; echo '{"session_id":"p1"}' | $BIN off
+check "off clears only its own session" "$(ls "$CLAUDE_BULB_DIR")" "p2"
+$BIN clear-all
+
 # --- usage: tokens and cost from transcript fixtures (expected numbers worked out by hand in docs/how-it-works.md)
 export CLAUDE_BULB_PROJECTS=./tests/fixtures/projects
 export CLAUDE_BULB_PRICES=./prices.json

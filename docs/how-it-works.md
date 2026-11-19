@@ -28,8 +28,9 @@ bulb off even though session B is still waiting.
 | File | Job |
 |---|---|
 | `Sources/main.swift` | Entry point. With `on`, `off` or `clear-all` it acts as a hook; `usage` prints the report; with none it starts the menu bar app. |
-| `Sources/BulbStore.swift` | Owns the state folder: create, delete and list session files. Rejects unsafe session ids (path traversal). |
-| `Sources/HookCommand.swift` | Parses the hook JSON and calls BulbStore. Always exits 0 on bad input so it can never break Claude Code. |
+| `Sources/BulbStore.swift` | Owns the state folder: create, read, delete and prune session files. Rejects unsafe session ids (path traversal). |
+| `Sources/WaitingList.swift` / `Sources/WaitingMenuSection.swift` | The "Waiting on you" lines, for `claude-bulb list` and the top of the menu. |
+| `Sources/HookCommand.swift` | Parses the hook JSON, works out the reason (tool, question, finished turn), and calls BulbStore. Always exits 0 on bad input so it can never break Claude Code. |
 | `Sources/BulbApp.swift` | `NSStatusItem` in the menu bar: SF Symbol `lightbulb`, red blink, `Glass` sound every 30 s, menu with today's usage. |
 | `Sources/TokenUsage.swift` | The four token meters (input, cache write 5m/1h, cache read, output) and how to add them. |
 | `Sources/UsageReader.swift` | Reads transcripts in `~/.claude/projects` (subagent files count toward their session). Files in, replies out. |
@@ -89,3 +90,20 @@ Total: out 2,510 ("2.5k"), $0.059 ("$0.06"), 2 unpriced. Without dedupe, out wou
 | `CLAUDE_BULB_PS` / `CLAUDE_BULB_LAUNCHCTL` | run the real command | A file whose text stands in for `ps` / `launchctl` output |
 
 `test.sh` sets these so tests never touch your real files.
+
+## The state file
+
+`~/.claude-bulb/state/<session_id>` holds a few hundred bytes of JSON (empty files from older
+versions still count; they show as "unknown session"):
+
+```json
+{"project":"orca-platform","reason":"needs permission: Bash",
+ "message":"Claude needs your permission to use Bash",
+ "since":"2026-11-18T17:00:00Z","transcriptPath":"/Users/you/.claude/projects/.../<session_id>.jsonl"}
+```
+
+- A later `Notification` for the same session keeps the more specific reason and adds its message.
+- `since` is kept from the first event, so "3 min ago" means how long Claude has been waiting.
+- Stale: the file's modification time is over 12 hours old, or `transcriptPath` no longer exists.
+  The app prunes every 30 seconds and when the menu opens; `claude-bulb list` prunes first.
+

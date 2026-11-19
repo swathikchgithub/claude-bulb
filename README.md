@@ -54,6 +54,7 @@ Click the bulb for its menu:
 
 | Menu item | What it does |
 |---|---|
+| Waiting on you | One line per session the bulb is lit for: project, reason, how long. Click a line to clear just that session |
 | Today · API-equivalent cost | Grey lines: tokens and cost for all sessions today, then the 5 costliest sessions |
 | Claude on this Mac ▸ | Disk, memory and background services used by Claude and Claude Code. Click a location to show it in Finder |
 | Mute sound | Keep blinking, stop the sound (until the app restarts) |
@@ -71,6 +72,35 @@ Click the bulb for its menu:
 
 Each Claude session is tracked separately, so with two sessions open,
 answering one does not hide the other.
+
+## Which session is the bulb lit for?
+
+The top of the menu lists them, or run:
+
+```bash
+~/tools/claude-bulb/bin/claude-bulb list
+```
+
+```text
+Waiting on you (2):
+  orca-platform — needs permission: Bash · 3 min ago
+      "Claude needs your permission to use Bash"
+      session 83148641-3e0b-43f3-b3ef-18d971b94d5b
+  evalify — finished its turn · 12 min ago
+      "Tests pass now."
+      session 1d0ce06a-1fcb-44ab-af26-e74088766e4a
+```
+
+| Reason | Comes from |
+|---|---|
+| needs permission: *tool* | `PermissionRequest` |
+| asked you a question | `PermissionRequest` for `AskUserQuestion` |
+| finished its turn (plus the first line of Claude's last reply) | `Stop` |
+| waiting for your reply, an MCP server asks for input | `Notification` |
+
+**Stale sessions are removed automatically:** a session that no hook has touched for 12 hours, or
+whose transcript file is gone. That covers sessions that ended without `SessionEnd`
+(app closed, crash). The line cannot open that chat for you; it tells you which project and why.
 
 ## Token use and cost
 

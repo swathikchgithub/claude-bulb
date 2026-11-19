@@ -1,7 +1,7 @@
 import AppKit
 
 /// The menu bar bulb. Reads BulbStore, draws the icon, blinks, plays the sound,
-/// and shows today's token use and Claude's footprint on this Mac when the menu opens.
+/// and, when the menu opens, shows which sessions wait on you, today's token use and Claude's footprint.
 final class BulbApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let store: BulbStore
     private let soundEvery: TimeInterval = 30
@@ -15,8 +15,14 @@ final class BulbApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var usageItems: [NSMenuItem] = []
     private var loadingUsage = false
     private let footprint = FootprintMenu()
+    private var waitingSection: WaitingMenuSection!
+    private var lastPrune = Date.distantPast
 
-    init(store: BulbStore) { self.store = store }
+    init(store: BulbStore) {
+        self.store = store
+        super.init()
+        waitingSection = WaitingMenuSection(store: store) { [weak self] in self?.tick() }
+    }
 
     func applicationDidFinishLaunching(_ note: Notification) {
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -30,6 +36,7 @@ final class BulbApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func buildMenu() {
         menu.delegate = self
+        menu.addItem(waitingSection.end)
         usageItems = [NSMenuItem(title: "Today · loading usage…", action: nil, keyEquivalent: "")]
         menu.addItem(usageItems[0])
         menu.addItem(.separator())
@@ -45,6 +52,8 @@ final class BulbApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
+        store.prune()
+        waitingSection.refresh(in: menu)
         refreshUsage()
         footprint.refresh()
     }
@@ -70,10 +79,13 @@ final class BulbApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let lines = ["Today · API-equivalent cost", "All sessions: " + r.total.line]
             + r.sessions.prefix(5).map { "\($0.label): \($0.line)" }
         usageItems = lines.map { NSMenuItem(title: $0, action: nil, keyEquivalent: "") }
-        for (i, line) in usageItems.enumerated() { menu.insertItem(line, at: i) }
+        let start = menu.index(of: waitingSection.end) + 1   // usage lines sit below the waiting list
+        for (i, line) in usageItems.enumerated() { menu.insertItem(line, at: start + i) }
     }
 
     private func tick() {
+        // Drop sessions that ended without telling us (checked every 30 s, not every tick).
+        if Date().timeIntervalSince(lastPrune) >= 30 { store.prune(); lastPrune = Date() }
         let nowWaiting = !store.waitingSessions().isEmpty
         if nowWaiting && !waiting { lastSound = .distantPast }   // just turned red: sound right away
         waiting = nowWaiting

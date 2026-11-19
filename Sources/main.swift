@@ -3,10 +3,18 @@ import AppKit
 // One binary, several modes:
 //   claude-bulb            -> run the menu bar app
 //   claude-bulb on|off     -> called by Claude Code hooks (reads hook JSON on stdin)
+//   claude-bulb list       -> which sessions are waiting on you, and why
 //   claude-bulb usage      -> print today's tokens and API-equivalent cost
 //   claude-bulb footprint  -> print Claude's disk, memory and background services
 let store = BulbStore.defaultStore()
 let args = CommandLine.arguments
+
+// claude-bulb list  -> which sessions are waiting on you, and why (removes stale ones first)
+if args.count > 1 && args[1] == "list" {
+    let pruned = store.prune()
+    print(WaitingList.text(store.entries(), pruned: pruned, now: Date()))
+    exit(0)
+}
 
 // claude-bulb footprint  -> print Claude's disk use, memory and background services
 if args.count > 1 && args[1] == "footprint" {

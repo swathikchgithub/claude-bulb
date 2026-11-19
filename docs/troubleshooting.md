@@ -22,8 +22,10 @@
 
 ## The bulb stays red
 
-- Something left a state file behind (for example Claude Code crashed before `SessionEnd`).
-  Click the bulb → **Clear now**, or:
+- Run `~/tools/claude-bulb/bin/claude-bulb list` or open the menu: the top lines say which
+  session and why. Click a line to clear that session.
+- A session that ended without `SessionEnd` is removed by itself after 12 hours, or as soon as
+  its transcript is gone. To clear everything now, click the bulb → **Clear now**, or:
   ```bash
   ~/tools/claude-bulb/bin/claude-bulb clear-all
   ```
@@ -48,6 +50,9 @@ ls ~/.claude/settings.json.bak-claude-bulb-*
 Copy the one you want back over `~/.claude/settings.json`.
 
 ## The bulb disappeared after a rebuild
+
+The LaunchAgent has `KeepAlive` → `SuccessfulExit: false`, so launchd restarts the bulb after a crash or a failed launch (Quit from the menu exits cleanly and stays quit).
+If it still does not come back:
 
 `launchctl print gui/$(id -u)/local.claude-bulb` shows `last exit reason = OS_REASON_CODESIGNING`.
 macOS kills a signed binary that was overwritten in place. `build.sh` avoids this by building
